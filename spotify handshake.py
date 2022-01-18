@@ -18,11 +18,6 @@ auth_response = requests.post(AUTH_URL, {
 	'client_secret': CLIENT_SECRET,
 })
 
-
-
-def percentEncode(mystr):
-	return mystr
-
 auth_response_data = auth_response.json()
 
 access_token = auth_response_data['access_token']
@@ -30,11 +25,17 @@ access_token = auth_response_data['access_token']
 headers = {
 	'Authorization': f'Bearer {access_token}'
 }
+def percentEncode(mystr):
+	return mystr
+
+
+
+
 
 #r = requests.get(BASE_URL + 'audio-features/' + track_id, headers=headers)
 r = requests.get(SP_BASE_URL + 'search?q=' + myQuery + '&type=track&limit=' + search_limit, headers=headers)
 r = r.json()
-jFile = open("myJSON.json", 'w')
+jFile = open("tmp.json", 'w')
 jFile.write(json.dumps(r))
 
 for i in range(len(r['tracks']['items'])):

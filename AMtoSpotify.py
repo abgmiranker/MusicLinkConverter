@@ -1,55 +1,68 @@
 #!/usr/bin/env python
 import requests
 from bs4 import BeautifulSoup
+import json
+
+def percentEncode(mystr):
+	return
+
+def authKey(auth_filename):
+	with open(auth_filename, 'r') as auth:
+		try:
+			token = auth.read().strip()
+		except FileNotFoundError:
+			print('auth_token file not found')
+			raise
+	return token
 
 AUTH_URL = 'https://accounts.spotify.com/api/token'
 SP_BASE_URL = 'https://api.spotify.com/v1/'
-#Spotify Share link: https://open.spotify.com/track/18dkRsYxeVNO6c3FlvSUTi?si=a6badc2d17cf4355
-#Apple Music Share Link: https://music.apple.com/us/album/moving-blind/1520275309?i=1520275310
-AM_URL = 'https://music.apple.com/us/album/moving-blind/1520275309?i=1520275310'
+# Spotify Share link: https://open.spotify.com/track/18dkRsYxeVNO6c3FlvSUTi?si=a6badc2d17cf4355
+# Apple Music Share Link: https://music.apple.com/us/album/moving-blind/1520275309?i=1520275310
+# AM_URL = 'https://music.apple.com/us/album/right-spot/1515634025?i=1515634149'
+AM_URL = input("Please paste your Apple Music song here:")
 
-track_id = '18dkRsYxeVNO6c3FlvSUTi'
-myQuery = 'isrc:USZ4V2100038'
-#myQuery = input("Enter Spotify search query:")
 search_limit = "5"
 bad_words = ["by", "&"]
 
+##Copied from the spotify handshake 
+CLIENT_ID = '848979a1e610451b87746a1a05a37edc'
+CLIENT_SECRET = authKey('spotifyAuth.tmp')
 
+#Set up an API authorization token
+auth_response = requests.post(AUTH_URL, {
+	'grant_type': 'client_credentials',
+	'client_id': CLIENT_ID,
+	'client_secret': CLIENT_SECRET,
+})
 
+auth_response_data = auth_response.json()
+access_token = auth_response_data['access_token']
+headers = {
+	'Authorization': f'Bearer {access_token}'
+}
 
-def percentEncode(mystr):
-	return mystr
 AMPage = requests.get(AM_URL).text
-AMPage.raise_for_status()
 r = BeautifulSoup(AMPage, 'html.parser')
-
-metatags = r.find_all('meta')
-song_title = r.find_all('meta', attrs={"name": "apple:title"})[0]['content']
-print(f"{song_title=}")
 
 #<title> element on Apple Music page is "{Song Name} by {Artist (& others)} on Apple Music
 #this block of text parses the 
 title = r.find_all('title')[0].text.encode("ascii","ignore")
 title = title.decode().split()
-print(f"{title=}")
 for i in bad_words:
-	title.remove(i)
+	try:
+		title.remove(i)
+	except:
+		pass
 
 #The last two elements of title at this point will always be "on", "AppleMusic" so we drop them
-keywords = " ".join(title[:-2])
-print(f"{keywords=}")
+myQuery = "%20".join(title[:-2])
 
-# auth_response_data = auth_response.json()
+spoofy = requests.get(SP_BASE_URL + 'search?q=' + myQuery + '&type=track&limit=' + search_limit, headers=headers)
+spoofy = spoofy.json()
 
-# access_token = auth_response_data['access_token']
+jFile = open("tmp.json", 'w')
+jFile.write(json.dumps(spoofy))
 
-# headers = {
-# 	'Authorization': f'Bearer {access_token}'
-# }
-
-#r = requests.get(BASE_URL + 'audio-features/' + track_id, headers=headers)
-# r = requests.get(BASE_URL + 'search?q=' + myQuery + '&type=track&limit=' + search_limit, headers=headers)
-# r = r.json()
-# for i in range(len(r['tracks']['items'])):
-# 	print(r['tracks']['items'][i]['external_urls'])
-#print(r)
+SpotifyLink = spoofy['tracks']['items'][0]['external_urls']['spotify']
+print(f"The Spotify link to this Apple Music song is {SpotifyLink}")
